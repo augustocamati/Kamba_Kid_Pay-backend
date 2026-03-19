@@ -1,0 +1,59 @@
+# 🔐 Variáveis de ambiente
+.env
+.env.*
+
+# 📦 Dependências
+node_modules/
+
+# 📂 Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 🗄️ Banco de dados
+*.sqlite
+*.sqlite3
+*.db
+
+# 🧪 Testes
+coverage/
+
+# 📁 Build / produção
+dist/
+build/
+
+# 🧠 Cache
+.cache/
+.tmp/
+
+# 🖥️ Sistema operacional
+.DS_Store
+Thumbs.db
+
+# 🧑‍💻 IDEs e editores
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# 🔄 Arquivos temporários
+*.swp
+
+# 📤 Uploads (caso tenhas imagens/files)
+uploads/
+public/uploads/
+
+# 🔑 Chaves e credenciais
+*.pem
+*.key
+
+# 🧾 Arquivos de config local
+config/local.json
+
+# 🧱 Sequelize CLI (se usares)
+migrations/*.js
+seeders/*.js

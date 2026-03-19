@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kamba Kid Pay - Teste Upload</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #764ba2;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #764ba2;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .response.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .response.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .token-input {
+            background: #f0f0f0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Kamba Kid Pay - Teste Upload</h1>
+        
+        <div class="info">
+            <strong>🎯 Instruções:</strong>
+            <ol style="margin-top: 10px;">
+                <li>Faz login primeiro para obter o token</li>
+                <li>Cola o token no campo abaixo</li>
+                <li>Escolhe a funcionalidade que queres testar</li>
+                <li>Preenche os dados e envia</li>
+            </ol>
+        </div>
+
+        <!-- Token -->
+        <div class="form-group">
+            <label for="token">🔑 Token JWT:</label>
+            <input type="text" id="token" class="token-input" placeholder="Cole o teu token aqui">
+        </div>
+
+        <!-- Tipo de Upload -->
+        <div class="form-group">
+            <label for="tipo">📋 Tipo de Upload:</label>
+            <select id="tipo">
+                <option value="tarefa">✅ Comprovativo de Tarefa</option>
+                <option value="campanha">🎯 Imagem de Campanha</option>
+                <option value="perfil">👤 Foto de Perfil</option>
+            </select>
+        </div>
+
+        <!-- Campos dinâmicos -->
+        <div id="campos"></div>
+
+        <!-- Arquivo -->
+        <div class="form-group">
+            <label for="arquivo">📁 Selecionar Arquivo:</label>
+            <input type="file" id="arquivo" accept="image/*">
+        </div>
+
+        <button onclick="enviarUpload()">🚀 Enviar</button>
+
+        <div id="resposta" class="response"></div>
+    </div>
+
+    <script>
+        const camposPorTipo = {
+            tarefa: `
+                <div class="form-group">
+                    <label>ID da Tarefa:</label>
+                    <input type="number" id="id_ref" value="1">
+                </div>
+                <div class="form-group">
+                    <label>ID da Criança:</label>
+                    <input type="number" id="id_crianca" value="1">
+                </div>
+            `,
+            campanha: `
+                <div class="form-group">
+                    <label>Nome da Campanha:</label>
+                    <input type="text" id="nome" value="Campanha Teste">
+                </div>
+                <div class="form-group">
+                    <label>Descrição:</label>
+                    <textarea id="descricao">Descrição da campanha</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Meta (Kz):</label>
+                    <input type="number" id="meta_valor" value="50000">
+                </div>
+                <div class="form-group">
+                    <label>Data Início:</label>
+                    <input type="date" id="date_inicio">
+                </div>
+                <div class="form-group">
+                    <label>Data Fim:</label>
+                    <input type="date" id="date_fim">
+                </div>
+            `,
+            perfil: `
+                <div class="form-group">
+                    <label>ID da Criança:</label>
+                    <input type="number" id="id_crianca" value="1">
+                </div>
+            `
+        };
+
+        function atualizarCampos() {
+            const tipo = document.getElementById('tipo').value;
+            document.getElementById('campos').innerHTML = camposPorTipo[tipo];
+        }
+
+        document.getElementById('tipo').addEventListener('change', atualizarCampos);
+        atualizarCampos();
+
+        async function enviarUpload() {
+            const tipo = document.getElementById('tipo').value;
+            const token = document.getElementById('token').value;
+            const arquivo = document.getElementById('arquivo').files[0];
+            
+            if (!token) {
+                alert('Por favor, insere o token JWT');
+                return;
+            }
+
+            if (!arquivo) {
+                alert('Por favor, seleciona um arquivo');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('foto', arquivo);
+
+            let url = '';
+            
+            if (tipo === 'tarefa') {
+                const id_ref = document.getElementById('id_ref').value;
+                const id_crianca = document.getElementById('id_crianca').value;
+                formData.append('id_crianca', id_crianca);
+                url = `http://localhost:3000/tarefas/enviar-comprovacao/${id_ref}`;
+            } 
+            else if (tipo === 'campanha') {
+                const nome = document.getElementById('nome').value;
+                const descricao = document.getElementById('descricao').value;
+                const meta_valor = document.getElementById('meta_valor').value;
+                const date_inicio = document.getElementById('date_inicio').value;
+                const date_fim = document.getElementById('date_fim').value;
+                
+                formData.append('nome', nome);
+                formData.append('descricao', descricao);
+                formData.append('meta_valor', meta_valor);
+                formData.append('date_inicio', date_inicio);
+                formData.append('date_fim', date_fim);
+                
+                url = 'http://localhost:3000/campanhas/criar';
+            }
+            else if (tipo === 'perfil') {
+                const id_crianca = document.getElementById('id_crianca').value;
+                formData.append('id_crianca', id_crianca);
+                url = `http://localhost:3000/criancas/atualizar-foto/${id_crianca}`;
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                const respostaDiv = document.getElementById('resposta');
+                if (response.ok) {
+                    respostaDiv.className = 'response success';
+                    respostaDiv.innerHTML = `<strong>✅ Sucesso!</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    respostaDiv.className = 'response error';
+                    respostaDiv.innerHTML = `<strong>❌ Erro!</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                const respostaDiv = document.getElementById('resposta');
+                respostaDiv.className = 'response error';
+                respostaDiv.innerHTML = `<strong>❌ Erro de conexão!</strong><br>${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
