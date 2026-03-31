@@ -21,11 +21,11 @@ const Campanhas = sequelize.define("campanhas", {
         allowNull: true
     },
     meta_valor: {
-        type: DataTypes.DECIMAL(10,2),
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false
     },
     valor_arrecadado: {
-        type: DataTypes.DECIMAL(10,2),
+        type: DataTypes.DECIMAL(10, 2),
         defaultValue: 0.00
     },
     date_inicio: {
@@ -39,6 +39,14 @@ const Campanhas = sequelize.define("campanhas", {
     status: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    organizacao: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    causa: {
+        type: DataTypes.ENUM('educacao', 'saude', 'ambiente', 'alimentacao', 'outro'),
+        defaultValue: 'outro'
     }
 }, {
     tableName: "campanhas",

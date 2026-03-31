@@ -1,0 +1,393 @@
+-------------------------------------------
+
+## 📋 VERIFICAÇÃO ROTA POR ROTA
+
+### **1. AUTENTICAÇÃO**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/auth/me` | ✅ Implementado | OK |
+| `POST /api/auth/login` | ✅ Implementado | OK |
+| `POST /api/auth/register` | ✅ Implementado | OK |
+| `POST /api/auth/logout` | ✅ Implementado | OK |
+
+---
+
+### **2. RESPONSÁVEL — DASHBOARD**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/parent/dashboard` | ✅ `parentController.dashboard` | OK |
+| `GET /api/parent/children/:childId/stats` | ✅ `parentController.childStats` | OK |
+
+---
+
+### **3. RESPONSÁVEL — GESTÃO DE DEPENDENTES**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `POST /api/parent/children` | ✅ `parentController.addChild` | OK |
+| `GET /api/parent/children` | ✅ `parentController.listChildren` | OK |
+| `POST /api/parent/children/:childId/add-balance` | ✅ `parentController.addBalance` | OK |
+| `PATCH /api/parent/children/:childId` | ✅ `parentController.updateChild` | OK |
+| `PATCH /api/parent/children/:childId/potes-config` | ✅ `parentController.updatePotesConfig` | OK |
+
+---
+
+### **4. RESPONSÁVEL — TAREFAS**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `POST /api/tasks` | ✅ `tarefasController.createTask` | OK |
+| `GET /api/tasks?crianca_id=&status=` | ✅ `tarefasController.listTasks` (com query params) | OK |
+| `PATCH /api/tasks/:taskId/approve` | ✅ `tarefasController.approveTask` | OK |
+| `PATCH /api/tasks/:taskId/reject` | ✅ `tarefasController.rejectTask` | OK |
+
+---
+
+### **5. RESPONSÁVEL — MISSÕES**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `POST /api/missions` | ✅ `missoesController.createMission` | OK |
+| `GET /api/missions?crianca_id=&ativa=` | ✅ `missoesController.listMissions` | OK |
+| `PATCH /api/missions/:missionId/progress` | ✅ `missoesController.updateProgress` | OK |
+
+---
+
+### **6. RESPONSÁVEL — CAMPANHAS**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `POST /api/campaigns` | ✅ `campanhaController.createCampaign` | OK |
+| `GET /api/campaigns?ativa=true` | ✅ `campanhaController.listCampaigns` | OK |
+
+---
+
+### **7. RESPONSÁVEL — FINANÇAS**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/parent/children/:childId/finance` | ✅ `parentController.childFinance` | OK |
+
+---
+
+### **8. RESPONSÁVEL — FAMÍLIA E PERFIL**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `PATCH /api/parent/children/:childId` | ✅ `parentController.updateChild` | OK |
+| `PATCH /api/parent/children/:childId/potes-config` | ✅ `parentController.updatePotesConfig` | OK |
+
+---
+
+### **9. CRIANÇA — DASHBOARD**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/child/dashboard` | ✅ `childController.dashboard` | OK |
+
+---
+
+### **10. CRIANÇA — TAREFAS**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/child/tasks?status=` | ✅ `childController.listTasks` | OK |
+| `PATCH /api/child/tasks/:taskId/submit` | ✅ `childController.submitTask` (com foto) | OK |
+
+---
+
+### **11. CRIANÇA — MISSÕES**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/child/missions?tipo=` | ✅ `childController.listMissions` | OK |
+
+---
+
+### **12. CRIANÇA — SOLIDARIEDADE (CAMPANHAS)**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/campaigns?ativa=true` | ✅ `campanhaController.listCampaigns` | OK |
+| `POST /api/child/donations` | ✅ `childController.donate` | OK |
+
+---
+
+### **13. CRIANÇA — ESCOLA (CONTEÚDO EDUCATIVO)**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/educational-content?faixa_etaria=` | ✅ `educationalController.listContent` | OK |
+| `PATCH /api/educational-content/:contentId/complete` | ✅ `educationalController.completeContent` | OK |
+
+---
+
+### **14. AVATAR E LOJA**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/shop/items?crianca_id=` | ✅ `shopController.listItems` | OK |
+| `POST /api/shop/purchase` | ✅ `shopController.purchase` | OK |
+| `PUT /api/child/avatar` | ✅ `childController.updateAvatar` | OK |
+
+---
+
+### **15. RELATÓRIOS**
+
+| Contrato | Backend | Status |
+|----------|---------|--------|
+| `GET /api/reports/progress?crianca_id=&periodo=` | ✅ `relatoriosController.progressReport` | OK |
+
+-----------------------------------------------------
+## 📊 ROTAS PARA ESTATÍSTICAS E FILTRAGENS (Diário, Semanal, Mensal, Anual)
+
+
+### **1. Estatísticas Gerais do Dependente (com período)**
+
+```
+GET /api/parent/children/:childId/stats
+```
+
+**Query Parameters:**
+| Parâmetro | Tipo | Descrição | Exemplo |
+|-----------|------|-----------|---------|
+| `periodo` | string | Tipo de período | `"diario"`, `"semanal"`, `"mensal"`, `"anual"` |
+| `data` | string | Data de referência (ISO) | `2026-03-29` |
+| `ano` | number | Ano para consulta (anual/mensal) | `2025` |
+| `mes` | number | Mês para consulta (mensal) | `3` |
+
+**Exemplos de requisição:**
+```bash
+# Estatísticas do dia 2026-03-29
+GET /api/parent/children/1/stats?periodo=diario&data=2026-03-29
+
+# Estatísticas da semana atual
+GET /api/parent/children/1/stats?periodo=semanal
+
+# Estatísticas de Março de 2025
+GET /api/parent/children/1/stats?periodo=mensal&ano=2025&mes=3
+
+# Estatísticas do ano de 2025
+GET /api/parent/children/1/stats?periodo=anual&ano=2025
+
+# Estatísticas do ano atual (sem parâmetros)
+GET /api/parent/children/1/stats
+```
+
+**Response 200:**
+```json
+{
+  "periodo": {
+    "tipo": "mensal",
+    "inicio": "2025-03-01T00:00:00.000Z",
+    "fim": "2025-03-31T23:59:59.999Z",
+    "ano": 2025,
+    "mes": 3
+  },
+  "crianca": {
+    "id": 1,
+    "nome": "Kiala",
+    "idade": 9,
+    "nivel": 5
+  },
+  "resumo": {
+    "saldo_inicial": 5000,
+    "saldo_final": 8500,
+    "variacao": 3500
+  },
+  "potes": {
+    "saldo_gastar": 3200,
+    "saldo_poupar": 4300,
+    "saldo_ajudar": 1000,
+    "total": 8500
+  },
+  "estatisticas": {
+    "tarefas": {
+      "total": 12,
+      "concluidas": 10,
+      "pendentes": 2,
+      "rejeitadas": 0,
+      "total_ganho": 1850
+    },
+    "missoes": {
+      "total": 3,
+      "concluidas": 2,
+      "em_andamento": 1,
+      "xp_ganho": 450
+    },
+    "doacoes": {
+      "total": 3,
+      "valor_total": 350,
+      "campanhas_impactadas": 2
+    },
+    "gastos": {
+      "total": 5,
+      "valor_total": 3200,
+      "categoria_mais_gasta": "lazer"
+    }
+  },
+  "detalhamento": {
+    "diario": [
+      { "dia": "2025-03-01", "tarefas": 1, "ganhou": 150, "gastou": 0, "poupou": 45 },
+      { "dia": "2025-03-02", "tarefas": 2, "ganhou": 300, "gastou": 100, "poupou": 90 }
+    ],
+    "semanal": [
+      { "semana": 10, "inicio": "2025-03-03", "fim": "2025-03-09", "tarefas": 4, "ganhou": 600, "gastou": 200 }
+    ],
+    "mensal": [
+      { "mes": "Janeiro", "tarefas": 8, "ganhou": 1200, "gastou": 800, "poupou": 360 }
+    ]
+  },
+  "comparacao": {
+    "periodo_anterior": {
+      "tarefas": 6,
+      "ganho": 900,
+      "poupanca": 270
+    },
+    "percentual_mudanca": {
+      "tarefas": 33.3,
+      "ganho": 38.9,
+      "poupanca": 33.3
+    }
+  }
+}
+```
+
+---
+
+### **2. Histórico de Transações com Filtros**
+
+```
+GET /api/parent/children/:childId/transacoes
+```
+
+**Query Parameters:**
+| Parâmetro | Tipo | Descrição | Exemplo |
+|-----------|------|-----------|---------|
+| `tipo` | string | Tipo de transação | `"tarefa"`, `"gastar"`, `"poupar"`, `"doar"`, `"bonus_gestao"` |
+| `data_inicio` | string | Data inicial (ISO) | `2025-01-01` |
+| `data_fim` | string | Data final (ISO) | `2025-12-31` |
+| `pote` | string | Pote afetado | `"gastar"`, `"poupar"`, `"ajudar"` |
+| `limit` | number | Limite de registos | `50` |
+| `offset` | number | Paginação | `0` |
+
+**Exemplos de requisição:**
+```bash
+# Todas as transações de 2025
+GET /api/parent/children/1/transacoes?data_inicio=2025-01-01&data_fim=2025-12-31
+
+# Apenas doações
+GET /api/parent/children/1/transacoes?tipo=doar&data_inicio=2025-01-01
+
+# Apenas gastos do pote Gastar
+GET /api/parent/children/1/transacoes?tipo=gastar&pote=gastar
+
+# Últimas 50 transações
+GET /api/parent/children/1/transacoes?limit=50
+```
+
+**Response 200:**
+```json
+{
+  "total": 45,
+  "limit": 50,
+  "offset": 0,
+  "transacoes": [
+    {
+      "id": 1,
+      "tipo": "tarefa",
+      "descricao": "Arrumar o quarto",
+      "valor": 150,
+      "pote_afetado": "poupar",
+      "data": "2025-03-15T10:30:00.000Z",
+      "categoria": "save"
+    },
+    {
+      "id": 2,
+      "tipo": "gastar",
+      "descricao": "Compra de brinquedo",
+      "valor": -50,
+      "pote_afetado": "gastar",
+      "data": "2025-03-14T15:20:00.000Z"
+    }
+  ],
+  "resumo": {
+    "total_ganho": 1850,
+    "total_gasto": 3200,
+    "total_poupado": 4300,
+    "total_doado": 1000
+  }
+}
+```
+
+---
+
+### **6. Exportar Relatório (PDF/CSV)**
+
+```
+GET /api/parent/children/:childId/exportar-relatorio
+```
+
+**Query Parameters:**
+| Parâmetro | Tipo | Descrição | Exemplo |
+|-----------|------|-----------|---------|
+| `formato` | string | Formato de exportação | `"pdf"`, `"csv"` |
+| `periodo` | string | Período | `"mensal"`, `"anual"` |
+| `ano` | number | Ano | `2025` |
+| `mes` | number | Mês | `3` |
+
+**Exemplos de requisição:**
+```bash
+# Exportar relatório mensal em PDF
+GET /api/parent/children/1/exportar-relatorio?formato=pdf&periodo=mensal&ano=2025&mes=3
+
+# Exportar relatório anual em CSV
+GET /api/parent/children/1/exportar-relatorio?formato=csv&periodo=anual&ano=2025
+```
+
+**Response 200:** Arquivo para download
+
+---
+
+## 📋 RESUMO DAS NOVAS ROTAS
+
+| Rota | Método | Descrição |
+|------|--------|-----------|
+| `GET /api/parent/children/:childId/stats` | GET | Estatísticas com período (diário/semanal/mensal/anual) |
+| `GET /api/parent/children/:childId/transacoes` | GET | Histórico de transações com filtros |
+| `GET /api/parent/children/:childId/exportar-relatorio 
+
+---
+
+## 🚀 EXEMPLOS DE USO NO FRONTEND
+
+```javascript
+// 1. Ver estatísticas de Março 2025
+const stats = await api.get('/parent/children/1/stats', {
+    params: { periodo: 'mensal', ano: 2025, mes: 3 }
+});
+
+// 2. Ver evolução anual
+const evolucao = await api.get('/parent/children/1/evolucao', {
+    params: { periodo: 'anual', ano: 2025 }
+});
+
+// 3. Ver transações de um período
+const transacoes = await api.get('/parent/children/1/transacoes', {
+    params: { 
+        data_inicio: '2025-01-01', 
+        data_fim: '2025-12-31',
+        tipo: 'tarefa'
+    }
+});
+
+// 4. Ver anos disponíveis
+const anos = await api.get('/parent/children/1/anos-disponiveis');
+
+// 5. Exportar relatório
+window.open(`/api/parent/children/1/exportar-relatorio?formato=pdf&periodo=anual&ano=2025`, '_blank');
+```
+
+Agora o responsável pode visualizar estatísticas diárias, semanais, mensais, anuais e aceder a registos de anos anteriores! 📊🚀

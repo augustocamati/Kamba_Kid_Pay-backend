@@ -1,85 +1,217 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const Responsavel = require("../models/Responsavel");
-const Criancas = require("../models/Criancas");
+const Criancas = require ("../models/Criancas")
 
 const SECRET = process.env.JWT_SECRET;
 
-// LOGIN DO Responsavel
-exports.loginResponsavel = async (req, res) => {
-  try {
-    const { email, senha } = req.body;
 
-    if (!email || !senha) return res.status(400).json({ message: "Email e senha são obrigatórios" });
+// ==============================
+// GET /api/auth/me
+// ==============================
+exports.me = async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(" ")[1];
 
-    const responsavel = await Responsavel.findOne({ where: { email } });
-    if (!responsavel) return res.status(404).json({ message: "Responsavel não encontrado" });
+        if (!token) {
+            return res.status(401).json({
+                erro: "NAO_AUTENTICADO",
+                mensagem: "Sessão inválida ou expirada."
+            });
+        }
 
-    const senhaValida = await bcrypt.compare(senha, responsavel.senha);
-    if (!senhaValida) return res.status(401).json({ message: "Senha incorreta" });
+        const decoded = jwt.verify(token, SECRET);
 
-    const token = jwt.sign(
-      { id: responsavel.id_responsavel, email: responsavel.email },
-      SECRET,
-      { expiresIn: "7d" }
-    );
+        const responsavel = await Responsavel.findByPk(decoded.id);
 
-    res.json({
-      message: "Login realizado com sucesso",
-      token,
-      responsavel: {
-        id_responsavel: responsavel.id_responsavel,
-        nome_completo: responsavel.nome_completo,
-        email: responsavel.email
-      }
-    });
+        if (!responsavel) {
+            return res.status(404).json({
+                erro: "UTILIZADOR_NAO_ENCONTRADO"
+            });
+        }
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Erro no login" });
-  }
+        return res.json({
+            id: responsavel.id_responsavel,
+            nome: responsavel.nome_completo,
+            tipo: responsavel.tipo, // ✔ agora correto
+            email: responsavel.email
+        });
+
+    } catch (error) {
+        return res.status(401).json({
+            erro: "NAO_AUTENTICADO",
+            mensagem: "Sessão inválida ou expirada."
+        });
+    }
 };
 
-// LOGIN DA CRIANÇA
-exports.loginCrianca = async (req, res) => {
-  try {
-    const { nome_usuario, senha } = req.body;
 
-    if (!nome_usuario || !senha) {
-      return res.status(400).json({ message: "Nome de usuário e senha são obrigatórios" });
+// ==============================
+// POST /api/auth/login
+// ==============================
+exports.login = async (req, res) => {
+    try {
+        const { email, senha } = req.body;
+
+        if (!email || !senha) {
+            return res.status(400).json({
+                erro: "CAMPOS_OBRIGATORIOS",
+                mensagem: "Email e senha são obrigatórios."
+            });
+        }
+
+        // 🔥 PRIMEIRO: Tentar como responsável
+        const responsavel = await Responsavel.findOne({ where: { email } });
+
+        if (responsavel) {
+            const senhaValida = await bcrypt.compare(senha, responsavel.senha);
+            if (senhaValida) {
+                const token = jwt.sign(
+                    { id: responsavel.id_responsavel, tipo: "responsavel" },
+                    SECRET,
+                    { expiresIn: "7d" }
+                );
+                return res.json({
+                    token,
+                    usuario: {
+                        id: responsavel.id_responsavel,
+                        nome: responsavel.nome_completo,
+                        tipo: responsavel.tipo, 
+                        email: responsavel.email,
+                        telefone: responsavel.telefone,
+                        provincia: responsavel.provincia,
+                        municipio: responsavel.municipio
+                    }
+                });
+            }
+        }
+
+        // 🔥 SEGUNDO: Tentar como criança (usando nome_usuario como email)
+        const crianca = await Criancas.findOne({ where: { nome_usuario: email } });
+        
+        if (crianca) {
+            const senhaValida = await bcrypt.compare(senha, crianca.senha);
+            if (senhaValida) {
+                const token = jwt.sign(
+                    { id: crianca.id_crianca, tipo: "crianca" },
+                    SECRET,
+                    { expiresIn: "7d" }
+                );
+                return res.json({
+                    token,
+                    usuario: {
+                        id: crianca.id_crianca,
+                        nome: crianca.nome_completo,
+                        tipo: "crianca",
+                        username: crianca.nome_usuario,
+                        idade: crianca.idade,
+                        nivel: crianca.nivel,
+                        xp: crianca.xp,
+                        provincia: crianca.provincia,
+                        municipio: crianca.municipio,
+                        avatar: crianca.avatar,
+                        potes: {
+                            gastar: parseFloat(crianca.saldo_gastar),
+                            poupar: parseFloat(crianca.saldo_poupar),
+                            ajudar: parseFloat(crianca.saldo_ajudar),
+                            total: parseFloat(crianca.saldo_gastar) + parseFloat(crianca.saldo_poupar) + parseFloat(crianca.saldo_ajudar)
+                        }
+                    }
+                });
+            }
+        }
+
+        // Se chegou aqui, credenciais inválidas
+        return res.status(401).json({
+            erro: "CREDENCIAIS_INVALIDAS",
+            mensagem: "Conta não encontrada. Verifique seus dados."
+        });
+
+    } catch (error) {
+        console.error("Erro no login:", error);
+        res.status(500).json({
+            erro: "ERRO_INTERNO",
+            mensagem: "Erro ao processar login"
+        });
     }
+};
 
-    const crianca = await Criancas.findOne({ where: { nome_usuario } });
-    if (!crianca) return res.status(404).json({ message: "Criança não encontrada" });
+// ==============================
+// POST /api/auth/register
+// ==============================
+exports.register = async (req, res) => {
+    try {
+        const { nome, email, senha, tipo, provincia, municipio, telefone } = req.body;
 
-    const senhaValida = await bcrypt.compare(senha, crianca.senha);
-    if (!senhaValida) return res.status(401).json({ message: "Senha incorreta" });
+        if (!nome || !email || !senha || !tipo || !provincia || !municipio || !telefone) {
+            return res.status(400).json({
+                erro: "CAMPOS_OBRIGATORIOS",
+                mensagem: "Preencha todos os campos obrigatórios."
+            });
+        }
 
-    const token = jwt.sign(
-      { id: crianca.id_crianca, tipo: "crianca" },
-      SECRET,
-      { expiresIn: "7d" }
-    );
+        const existe = await Responsavel.findOne({ where: { email } });
+        if (existe) {
+            return res.status(409).json({
+                erro: "EMAIL_JA_REGISTADO",
+                mensagem: "Este e-mail já está em uso."
+            });
+        }
 
-    res.json({
-      message: "Login realizado com sucesso",
-      token,
-      crianca: {
-        id_crianca: crianca.id_crianca,
-        nome_completo: crianca.nome_completo,
-        idade: crianca.idade,
-        id_responsavel: crianca.id_responsavel,
-        nome_usuario: crianca.nome_usuario,
-        saldo_gastar: crianca.saldo_gastar,
-        saldo_poupar: crianca.saldo_poupar,
-        saldo_ajudar: crianca.saldo_ajudar,
-        xp: crianca.xp,
-        nivel: crianca.nivel
-      }
+        const existeTelefone = await Responsavel.findOne({ where: { telefone } });
+        if (existeTelefone) {
+            return res.status(409).json({
+                erro: "TELEFONE_JA_REGISTADO",
+                mensagem: "Este número de telefone já está em uso."
+            });
+        }
+
+        const senhaHash = await bcrypt.hash(senha, 10);
+
+        const novoResponsavel = await Responsavel.create({
+            nome_completo: nome,
+            email,
+            tipo,
+            telefone,
+            senha: senhaHash,
+            provincia,
+            municipio
+        });
+
+        const token = jwt.sign(
+            { id: novoResponsavel.id_responsavel, tipo: "responsavel" },
+            SECRET,
+            { expiresIn: "7d" }
+        );
+
+        return res.status(201).json({
+            token,
+            usuario: {
+                id: novoResponsavel.id_responsavel,
+                nome: novoResponsavel.nome_completo,
+                tipo: novoResponsavel.tipo,
+                telefone: novoResponsavel.telefone,
+                email: novoResponsavel.email,
+                provincia: novoResponsavel.provincia,
+                municipio: novoResponsavel.municipio
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            erro: "ERRO_INTERNO",
+            mensagem: error.message
+        });
+    }
+};
+
+
+// ==============================
+// POST /api/auth/logout
+// ==============================
+exports.logout = async (req, res) => {
+    return res.json({
+        mensagem: "Sessão encerrada com sucesso."
     });
-
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ message: "Erro no login" });
-  }
 };

@@ -1,4 +1,3 @@
-// models/Missoes.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
@@ -44,10 +43,38 @@ const Missao = sequelize.define("missao", {
     ativa: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    tipo: {
+        type: DataTypes.ENUM('poupanca', 'consumo', 'solidariedade'),
+        defaultValue: 'poupanca'
+    },
+    objetivo_valor: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0
+    },
+    progresso_atual: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0
+    },
+    icone: {
+        type: DataTypes.STRING,
+        defaultValue: "🎯"
+    },
+    id_crianca: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'crianca',
+            key: 'id_crianca'
+        }
+    },
+    concluida: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 }, {
     tableName: "missao",
-    timestamps: false
+    timestamps: true
 });
 
 module.exports = Missao;

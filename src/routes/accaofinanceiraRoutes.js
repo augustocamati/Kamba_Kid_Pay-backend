@@ -1,15 +1,15 @@
-const express = require("express")
+// routes/financeiroRoutes.js
+const express = require("express");
+const router = express.Router();
+const financeiroController = require("../controllers/accaofinanceiraController");
+const { authMiddleware, requireParent } = require("../middlewares/auth");
 
-const router = express.Router()
+router.use(authMiddleware);
 
-const FinanceController = require("../controllers/accaofinanceiraController") 
+// Rotas que podem ser acessadas por responsável e criança (com validações internas)
+router.post("/poupar", financeiroController.poupar);
+router.post("/gastar", financeiroController.gastar);
+router.post("/doar", financeiroController.doar);
+router.post("/bonus", requireParent, financeiroController.bonusPoupanca);
 
-router.post("/poupar",FinanceController.poupar)
-
-router.post("/gastar",FinanceController.gastar)
-
-//router.post("/doar",FinanceController.doar)
-
-router.post("/bonus",FinanceController.bonusPoupanca)
-
-module.exports = router
+module.exports = router;

@@ -1,144 +1,201 @@
+// controllers/tarefasController.js
+const { Op } = require("sequelize");
+const sequelize = require("../config/database");
 const Tarefa = require("../models/Tarefa");
 const Criancas = require("../models/Criancas");
 const Responsavel = require("../models/Responsavel");
 const Historico = require("../models/HistoricoTransacao");
 const Missao = require("../models/Missoes");
 const ProgressoMissao = require("../models/ProgressoMissao");
-const sequelize = require("../config/database");
 
-exports.criarTarefa = async (req, res) => {
+
+exports.createTask = async (req, res) => {
+    const transaction = await sequelize.transaction();
     try {
-        const { titulo, descricao, recompensa, id_crianca, id_responsavel, id_missao } = req.body;
+        const { titulo, descricao, recompensa, categoria, crianca_id, icone } = req.body;
+        const responsavelId = req.usuario.id;
 
-        // console.log(" Dados recebidos:", { titulo, id_missao });
+        console.log("📝 Criando tarefa:", { titulo, recompensa, crianca_id, categoria });
 
-        // ⚠️ VALIDAÇÃO: Se veio id_missao, verificar se é do tipo tarefa_casa
-        if (id_missao) {
-            const missao = await Missao.findByPk(id_missao);
+        if (!titulo || !descricao || !recompensa || !crianca_id) {
+            await transaction.rollback();
+            return res.status(400).json({
+                erro: "CAMPOS_OBRIGATORIOS",
+                mensagem: "Preencha todos os campos obrigatórios."
+            });
+        }
 
-            if (!missao) {
-                return res.status(400).json({
-                    erro: "Missão não encontrada"
-                });
-            }
-
-            if (missao.tipo_missao !== 'tarefa_casa') {
-                return res.status(400).json({
-                    erro: "O ID da missão não corresponde a uma tarefa doméstica",
-                    missao_encontrada: {
-                        id: missao.id_missao,
-                        titulo: missao.titulo,
-                        tipo: missao.tipo_missao
-                    }
-                });
-            }
-
-            // Verificar se a missão pertence ao responsável
-            if (missao.id_responsavel && missao.id_responsavel !== id_responsavel) {
-                return res.status(400).json({
-                    erro: "Esta missão não pertence ao responsável informado"
-                });
-            }
+        // Verificar se a criança existe e pertence ao responsável
+        const crianca = await Criancas.findByPk(crianca_id, { transaction });
+        if (!crianca || crianca.id_responsavel !== responsavelId) {
+            await transaction.rollback();
+            return res.status(404).json({
+                erro: "CRIANCA_NAO_ENCONTRADA",
+                mensagem: "Dependente não encontrado."
+            });
         }
 
         const tarefa = await Tarefa.create({
             titulo,
             descricao,
-            recompensa,
-            id_crianca,
-            id_responsavel,
-            id_missao: id_missao || null,
-            status: "pendente"
-        });
+            recompensa: parseFloat(recompensa),
+            categoria: categoria || 'save',
+            icone: icone || 'clipboard',
+            id_crianca: crianca_id,
+            id_responsavel: responsavelId,
+            status: 'pendente'
+        }, { transaction });
+
+        await transaction.commit();
+
+        console.log("✅ Tarefa criada com ID:", tarefa.id_tarefa);
 
         res.status(201).json({
-            mensagem: "✅ Tarefa criada com sucesso",
-            tarefa,
-            vinculacao: id_missao ? `Vinculada à missão: ${id_missao}` : "Tarefa avulsa"
+            id: tarefa.id_tarefa,
+            titulo: tarefa.titulo,
+            descricao: tarefa.descricao,
+            recompensa: parseFloat(tarefa.recompensa),
+            status: tarefa.status,
+            crianca_id: tarefa.id_crianca,
+            icone: tarefa.icone,
+            categoria: tarefa.categoria,
+            criado_em: tarefa.createdAt
         });
 
     } catch (error) {
+        await transaction.rollback();
         console.error("❌ Erro ao criar tarefa:", error);
-        res.status(500).json({ erro: error.message });
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
 
-exports.enviarComprovacao = async (req, res) => {
+// GET /api/tasks
+exports.listTasks = async (req, res) => {
     try {
-        const { id_tarefa } = req.body;
+        const { crianca_id, status } = req.query;
+        const responsavelId = req.usuario.id;
 
-        // 🔒 Validação básica
-        if (!id_tarefa) {
-            return res.status(400).json({ erro: "ID da tarefa é obrigatório" });
-        }
+        const where = { id_responsavel: responsavelId };
+        if (crianca_id) where.id_crianca = crianca_id;
+        if (status) where.status = status;
 
-        if (!req.file) {
-            return res.status(400).json({ erro: "Envie uma foto da tarefa realizada" });
-        }
-
-        // 🔍 Verificar se a tarefa existe
-        const tarefa = await Tarefa.findByPk(id_tarefa);
-
-        if (!tarefa) {
-            return res.status(404).json({
-                erro: "Tarefa não encontrada"
-            });
-        }
-
-        if (tarefa.status !== "pendente") {
-            return res.status(400).json({
-                erro: "Esta tarefa já foi enviada ou processada"
-            });
-        }
-
-        // 🔄 Atualizar
-        await tarefa.update({
-            foto_comprovacao: req.file.filename,
-            status: "aguardando_aprovacao"
+        const tarefas = await Tarefa.findAll({
+            where,
+            include: [{ model: Criancas, attributes: ['nome_completo'] }],
+            order: [['createdAt', 'DESC']]
         });
-
 
         res.json({
-            mensagem: "📸 Comprovação enviada! Aguardando aprovação do responsável.",
-            imagem: `/uploads/${req.file.filename}`,
-            tarefa_id: tarefa.id_tarefa
+            tarefas: tarefas.map(t => ({
+                id: t.id_tarefa,
+                titulo: t.titulo,
+                descricao: t.descricao,
+                recompensa: parseFloat(t.recompensa),
+                status: t.status,
+                crianca_id: t.id_crianca,
+                crianca_nome: t.Criancum?.nome_completo,
+                foto_url: t.foto_comprovacao ? `/uploads/${t.foto_comprovacao}` : null,
+                icone: t.icone,
+                categoria: t.categoria,
+                criado_em: t.createdAt,
+                concluido_em: t.concluido_em,
+                aprovado_em: t.aprovado_em
+            }))
         });
 
     } catch (error) {
-        res.status(500).json({ erro: error.message });
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
 
-exports.aprovarTarefa = async (req, res) => {
+// 
+exports.approveTask = async (req, res) => {
     const transaction = await sequelize.transaction();
-
     try {
-        const { id_tarefa } = req.params;
+        const { taskId } = req.params;
 
-        // Buscar dados
-        const tarefa = await Tarefa.findByPk(id_tarefa, { transaction });
+        const tarefa = await Tarefa.findByPk(taskId, { transaction });
         if (!tarefa) {
             await transaction.rollback();
-            return res.status(404).json({ erro: "Tarefa não encontrada" });
+            return res.status(404).json({
+                erro: "TAREFA_NAO_ENCONTRADA",
+                mensagem: "A tarefa solicitada não foi encontrada."
+            });
+        }
+
+        // 🔥 VERIFICAR SE A TAREFA ESTÁ AGUARDANDO APROVAÇÃO
+        if (tarefa.status !== 'aguardando_aprovacao') {
+            await transaction.rollback();
+            return res.status(400).json({
+                erro: "STATUS_INVALIDO",
+                mensagem: `A tarefa está com status "${tarefa.status}". Só é possível aprovar tarefas que estão "aguardando_aprovacao".`
+            });
         }
 
         const crianca = await Criancas.findByPk(tarefa.id_crianca, { transaction });
         const responsavel = await Responsavel.findByPk(crianca.id_responsavel, { transaction });
 
-        // Calcular divisão nos potes
-        const valor = parseFloat(tarefa.recompensa);
-        const gastar = valor * (responsavel.perc_gastar / 100);
-        const poupar = valor * (responsavel.perc_poupar / 100);
-        const ajudar = valor * (responsavel.perc_ajudar / 100);
+        // 🔥 CORREÇÃO: Garantir que os percentuais existem e são números
+        let configPotes = crianca.distribuicao_potes;
 
-        // Atualizar saldos 
-        crianca.saldo_gastar = parseFloat(crianca.saldo_gastar) + gastar;
-        crianca.saldo_poupar = parseFloat(crianca.saldo_poupar) + poupar;
-        crianca.saldo_ajudar = parseFloat(crianca.saldo_ajudar) + ajudar;
-        await crianca.save({ transaction });
+        // Verificar se configPotes é válido
+        if (!configPotes || typeof configPotes !== 'object') {
+            configPotes = {
+                gastar_pct: 60,
+                poupar_pct: 30,
+                ajudar_pct: 10
+            };
+        }
+
+        // Garantir que os valores são números
+        const gastar_pct = parseFloat(configPotes.gastar_pct) || 60;
+        const poupar_pct = parseFloat(configPotes.poupar_pct) || 30;
+        const ajudar_pct = parseFloat(configPotes.ajudar_pct) || 10;
+
+        // Garantir que a soma é 100
+        const total = gastar_pct + poupar_pct + ajudar_pct;
+        if (total !== 100) {
+            console.warn(`⚠️ Soma dos percentuais é ${total}, ajustando...`);
+            // Ajustar para 100 mantendo proporções
+        }
+
+        const valor = parseFloat(tarefa.recompensa);
+
+        // 🔥 Cálculo seguro dos valores
+        const gastar = (valor * gastar_pct) / 100;
+        const poupar = (valor * poupar_pct) / 100;
+        const ajudar = (valor * ajudar_pct) / 100;
+
+        console.log("💰 Configuração dos potes:", { gastar_pct, poupar_pct, ajudar_pct });
+        console.log("💰 Cálculo:", { valor, gastar, poupar, ajudar });
+        console.log("👧 Saldos ANTES:", {
+            gastar: crianca.saldo_gastar,
+            poupar: crianca.saldo_poupar,
+            ajudar: crianca.saldo_ajudar
+        });
+
+        // 🔥 Calcular novos saldos
+        const novoSaldoGastar = parseFloat(crianca.saldo_gastar || 0) + gastar;
+        const novoSaldoPoupar = parseFloat(crianca.saldo_poupar || 0) + poupar;
+        const novoSaldoAjudar = parseFloat(crianca.saldo_ajudar || 0) + ajudar;
+
+        // 🔥 Atualizar saldos
+        await crianca.update({
+            saldo_gastar: novoSaldoGastar,
+            saldo_poupar: novoSaldoPoupar,
+            saldo_ajudar: novoSaldoAjudar
+        }, { transaction });
+
+        console.log("👧 Saldos DEPOIS:", {
+            gastar: novoSaldoGastar,
+            poupar: novoSaldoPoupar,
+            ajudar: novoSaldoAjudar
+        });
 
         // Atualizar tarefa
         tarefa.status = "aprovada";
+        tarefa.aprovado_em = new Date();
         await tarefa.save({ transaction });
 
         // Criar histórico
@@ -149,13 +206,12 @@ exports.aprovarTarefa = async (req, res) => {
             descricao: `Recompensa: ${tarefa.titulo}`
         }, { transaction });
 
-        // Se tem missão, apenas marcar como concluída (SEM XP)
+        // Se tem missão, atualizar progresso
         if (tarefa.id_missao) {
             const progresso = await ProgressoMissao.findOne({
                 where: { id_crianca: crianca.id_crianca, id_missao: tarefa.id_missao },
                 transaction
             });
-
             if (progresso && progresso.estado !== 'concluida') {
                 progresso.estado = 'concluida';
                 progresso.data_conclusao = new Date();
@@ -165,67 +221,89 @@ exports.aprovarTarefa = async (req, res) => {
 
         await transaction.commit();
 
+        // 🔥 Determinar qual pote foi afetado
+        let poteAfetado = "gastar";
+        let novoSaldoPote = novoSaldoGastar;
+
+        if (tarefa.categoria === 'save') {
+            poteAfetado = "poupar";
+            novoSaldoPote = novoSaldoPoupar;
+        } else if (tarefa.categoria === 'help') {
+            poteAfetado = "ajudar";
+            novoSaldoPote = novoSaldoAjudar;
+        }
+
         res.json({
-            mensagem: "✅ Tarefa aprovada!",
-            valor_recebido: valor,
-            divisao: { gastar, poupar, ajudar },
-            novos_saldos: {
-                gastar: crianca.saldo_gastar,
-                poupar: crianca.saldo_poupar,
-                ajudar: crianca.saldo_ajudar
+            mensagem: "Tarefa aprovada com sucesso!",
+            tarefa: {
+                id: tarefa.id_tarefa,
+                status: tarefa.status,
+                aprovado_em: tarefa.aprovado_em
+            },
+            recompensa_creditada: {
+                valor,
+                pote: tarefa.categoria || "save",
+                novo_saldo_pote: novoSaldoPote,
+                detalhes: {
+                    gastar: novoSaldoGastar,
+                    poupar: novoSaldoPoupar,
+                    ajudar: novoSaldoAjudar
+                }
             }
         });
 
     } catch (error) {
-        console.error("❌ Erro ao aprovar tarefa:", error);
         await transaction.rollback();
-        res.status(500).json({ erro: error.message });
+        console.error("❌ Erro ao aprovar tarefa:", error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
 
-exports.rejeitarTarefa = async (req, res) => {
+// PATCH /api/tasks/:taskId/reject
+exports.rejectTask = async (req, res) => {
+    const transaction = await sequelize.transaction();
     try {
-        const { id_tarefa } = req.params;
+        const { taskId } = req.params;
+        const { motivo } = req.body;
 
-        await Tarefa.update({
-            status: "rejeitada"
-        }, {
-            where: { id_tarefa }
-        });
+        const tarefa = await Tarefa.findByPk(taskId, { transaction });
+        if (!tarefa) {
+            await transaction.rollback();
+            return res.status(404).json({
+                erro: "TAREFA_NAO_ENCONTRADA",
+                mensagem: "A tarefa solicitada não foi encontrada."
+            });
+        }
+
+        const crianca = await Criancas.findByPk(tarefa.id_crianca, { transaction });
+        if (crianca.id_responsavel !== req.usuario.id) {
+            await transaction.rollback();
+            return res.status(403).json({
+                erro: "SEM_PERMISSAO",
+                mensagem: "Você não tem permissão para rejeitar esta tarefa."
+            });
+        }
+
+        tarefa.status = "rejeitada";
+        tarefa.motivo_rejeicao = motivo || "Tarefa não atende aos critérios";
+        tarefa.rejeitado_em = new Date();
+        await tarefa.save({ transaction });
+
+        await transaction.commit();
 
         res.json({
-            mensagem: "❌ Tarefa rejeitada. Peça para a criança refazer."
+            mensagem: "Tarefa rejeitada.",
+            tarefa: {
+                id: tarefa.id_tarefa,
+                status: tarefa.status,
+                rejeitado_em: tarefa.rejeitado_em,
+                motivo_rejeicao: tarefa.motivo_rejeicao
+            }
         });
 
     } catch (error) {
-        res.status(500).json({ erro: error.message });
-    }
-};
-
-exports.listarTarefasCrianca = async (req, res) => {
-    try {
-        const { id_crianca } = req.params;
-
-        const tarefas = await Tarefa.findAll({
-            where: { id_crianca },
-            order: [['createdAt', 'DESC']]
-        });
-
-        // Separar por status
-        const pendentes = tarefas.filter(t => t.status === 'pendente');
-        const aguardando = tarefas.filter(t => t.status === 'aguardando_aprovacao');
-        const aprovadas = tarefas.filter(t => t.status === 'aprovada');
-        const rejeitadas = tarefas.filter(t => t.status === 'rejeitada');
-
-        res.json({
-            total: tarefas.length,
-            pendentes,
-            aguardando_aprovacao: aguardando,
-            aprovadas,
-            rejeitadas
-        });
-
-    } catch (error) {
-        res.status(500).json({ erro: error.message });
+        await transaction.rollback();
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };

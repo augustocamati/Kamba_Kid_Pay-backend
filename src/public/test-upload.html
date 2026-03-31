@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kamba Kid Pay - Teste Upload</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #764ba2;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #764ba2;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .response.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .response.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .token-input {
+            background: #f0f0f0;
+            font-family: monospace;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .badge-info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .status-bar {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-online {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-offline {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Kamba Kid Pay - Teste Upload</h1>
+        
+        <div class="status-bar">
+            <span>🔌 Status do Servidor:</span>
+            <span id="serverStatus" class="status-offline">Verificando...</span>
+        </div>
+        
+        <div class="info">
+            <strong>🎯 Instruções:</strong>
+            <ol style="margin-top: 10px;">
+                <li>Faz login primeiro para obter o token</li>
+                <li>Cola o token no campo abaixo</li>
+                <li>Escolhe a funcionalidade que queres testar</li>
+                <li>Preenche os dados e envia</li>
+            </ol>
+        </div>
+
+        <!-- Token -->
+        <div class="form-group">
+            <label for="token">🔑 Token JWT:</label>
+            <input type="text" id="token" class="token-input" placeholder="Cole o teu token aqui">
+        </div>
+
+        <!-- Tipo de Upload -->
+        <div class="form-group">
+            <label for="tipo">📋 Tipo de Upload:</label>
+            <select id="tipo">
+                <option value="tarefa">✅ Submeter Comprovativo de Tarefa</option>
+                <option value="campanha">🎯 Criar Campanha</option>
+                <option value="avatar">👤 Atualizar Avatar</option>
+            </select>
+        </div>
+
+        <!-- Campos dinâmicos -->
+        <div id="campos"></div>
+
+        <!-- Arquivo -->
+        <div id="arquivoDiv" class="form-group">
+            <label for="arquivo">📁 Selecionar Imagem <span class="badge badge-info">JPG, PNG, GIF até 5MB</span></label>
+            <input type="file" id="arquivo" accept="image/jpeg,image/jpg,image/png,image/gif">
+        </div>
+
+        <button onclick="enviarUpload()">🚀 Enviar</button>
+
+        <div id="resposta" class="response"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        // Verificar status do servidor
+        async function verificarServidor() {
+            const statusSpan = document.getElementById('serverStatus');
+            try {
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    statusSpan.innerHTML = '✅ Online';
+                    statusSpan.className = 'status-online';
+                } else {
+                    statusSpan.innerHTML = '⚠️ Offline';
+                    statusSpan.className = 'status-offline';
+                }
+            } catch (error) {
+                statusSpan.innerHTML = '❌ Offline';
+                statusSpan.className = 'status-offline';
+            }
+        }
+
+        const camposPorTipo = {
+            tarefa: `
+                <div class="form-group">
+                    <label>📌 ID da Tarefa <span class="badge badge-info">Obrigatório</span></label>
+                    <input type="number" id="id_tarefa" placeholder="Ex: 1" value="1">
+                </div>
+            `,
+            campanha: `
+                <div class="form-group">
+                    <label>🏷️ Nome da Campanha <span class="badge badge-info">Obrigatório</span></label>
+                    <input type="text" id="nome" value="Campanha Teste">
+                </div>
+                <div class="form-group">
+                    <label>📝 Descrição:</label>
+                    <textarea id="descricao" rows="3">Descrição da campanha</textarea>
+                </div>
+                <div class="form-group">
+                    <label>💰 Meta (Kz):</label>
+                    <input type="number" id="meta_valor" value="50000">
+                </div>
+                <div class="form-group">
+                    <label>📅 Data Início:</label>
+                    <input type="date" id="date_inicio" value="2024-01-01">
+                </div>
+                <div class="form-group">
+                    <label>📅 Data Fim:</label>
+                    <input type="date" id="date_fim" value="2024-12-31">
+                </div>
+                <div class="form-group">
+                    <label>🏢 Organização:</label>
+                    <input type="text" id="organizacao" value="Kamba Kid Pay">
+                </div>
+                <div class="form-group">
+                    <label>🎯 Causa:</label>
+                    <select id="causa">
+                        <option value="educacao">Educação</option>
+                        <option value="saude">Saúde</option>
+                        <option value="ambiente">Ambiente</option>
+                        <option value="alimentacao">Alimentação</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+            `,
+            avatar: `
+                <div class="form-group">
+                    <label>🎨 Cabelo:</label>
+                    <select id="cabelo">
+                        <option value="padrao">Padrão</option>
+                        <option value="afro">Afro</option>
+                        <option value="cacheado">Cacheado</option>
+                        <option value="trancas">Tranças</option>
+                        <option value="longo">Longo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>👕 Roupa:</label>
+                    <select id="roupa">
+                        <option value="padrao">Padrão</option>
+                        <option value="colorida">Colorida</option>
+                        <option value="vestido">Vestido</option>
+                        <option value="desportivo">Desportivo</option>
+                        <option value="social">Social</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>💎 Acessório:</label>
+                    <select id="acessorio">
+                        <option value="">Nenhum</option>
+                        <option value="oculos">Óculos de Sol</option>
+                        <option value="chapeu">Chapéu</option>
+                        <option value="coroa">Coroa</option>
+                        <option value="colar">Colar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🎨 Cor da Pele:</label>
+                    <select id="cor_pele">
+                        <option value="marrom">Marrom</option>
+                        <option value="claro">Claro</option>
+                        <option value="escuro">Escuro</option>
+                        <option value="amarelo">Amarelo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>😊 Expressão:</label>
+                    <select id="expressao">
+                        <option value="feliz">Feliz</option>
+                        <option value="triste">Triste</option>
+                        <option value="surpreso">Surpreso</option>
+                        <option value="pensativo">Pensativo</option>
+                    </select>
+                </div>
+            `
+        };
+
+        function atualizarCampos() {
+            const tipo = document.getElementById('tipo').value;
+            document.getElementById('campos').innerHTML = camposPorTipo[tipo] || '';
+            
+            const arquivoDiv = document.getElementById('arquivoDiv');
+            if (tipo === 'avatar') {
+                arquivoDiv.style.display = 'none';
+            } else {
+                arquivoDiv.style.display = 'block';
+            }
+        }
+
+        document.getElementById('tipo').addEventListener('change', atualizarCampos);
+        atualizarCampos();
+
+        async function enviarUpload() {
+            const tipo = document.getElementById('tipo').value;
+            const token = document.getElementById('token').value;
+            
+            if (!token) {
+                alert('❌ Por favor, insere o token JWT');
+                return;
+            }
+
+            const btn = document.querySelector('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Enviando...';
+            btn.disabled = true;
+
+            try {
+                // CASO AVATAR (sem foto)
+                if (tipo === 'avatar') {
+                    const cabelo = document.getElementById('cabelo')?.value || 'padrao';
+                    const roupa = document.getElementById('roupa')?.value || 'padrao';
+                    const acessorio = document.getElementById('acessorio')?.value || null;
+                    const cor_pele = document.getElementById('cor_pele')?.value || 'marrom';
+                    const expressao = document.getElementById('expressao')?.value || 'feliz';
+                    
+                    const avatarData = {
+                        cabelo,
+                        roupa,
+                        acessorio: acessorio || null,
+                        cor_pele,
+                        expressao
+                    };
+                    
+                    const response = await fetch(`${API_BASE}/child/avatar`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(avatarData)
+                    });
+                    
+                    const data = await response.json();
+                    const respostaDiv = document.getElementById('resposta');
+                    if (response.ok) {
+                        respostaDiv.className = 'response success';
+                        respostaDiv.innerHTML = `<strong>✅ Avatar atualizado!</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    } else {
+                        respostaDiv.className = 'response error';
+                        respostaDiv.innerHTML = `<strong>❌ Erro (${response.status})!</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    }
+                    return;
+                }
+
+                // CASO TAREFA OU CAMPANHA (com foto)
+                const arquivo = document.getElementById('arquivo').files[0];
+                if (!arquivo) {
+                    alert('❌ Por favor, seleciona uma imagem');
+                    return;
+                }
+
+                const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                if (!tiposPermitidos.includes(arquivo.type)) {
+                    alert('❌ Apenas imagens JPG, PNG ou GIF são permitidas');
+                    return;
+                }
+
+                if (arquivo.size > 5 * 1024 * 1024) {
+                    alert('❌ A imagem não pode exceder 5MB');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('foto', arquivo);
+                let url = '';
+                let method = 'POST';
+
+                if (tipo === 'tarefa') {
+                    const id_tarefa = document.getElementById('id_tarefa').value;
+                    if (!id_tarefa) {
+                        alert('❌ ID da tarefa é obrigatório');
+                        return;
+                    }
+                    url = `${API_BASE}/child/tasks/${id_tarefa}/submit`;
+                    method = 'PATCH';
+                } 
+                else if (tipo === 'campanha') {
+                    const nome = document.getElementById('nome').value;
+                    const descricao = document.getElementById('descricao').value;
+                    const meta_valor = document.getElementById('meta_valor').value;
+                    const date_inicio = document.getElementById('date_inicio').value;
+                    const date_fim = document.getElementById('date_fim').value;
+                    const organizacao = document.getElementById('organizacao')?.value || '';
+                    const causa = document.getElementById('causa')?.value || 'outro';
+                    
+                    if (!nome || !descricao || !meta_valor) {
+                        alert('❌ Nome, descrição e meta são obrigatórios');
+                        return;
+                    }
+                    
+                    formData.append('titulo', nome);
+                    formData.append('descricao', descricao);
+                    formData.append('meta_valor', meta_valor);
+                    formData.append('date_inicio', date_inicio);
+                    formData.append('date_fim', date_fim);
+                    formData.append('organizacao', organizacao);
+                    formData.append('causa', causa);
+                    
+                    url = `${API_BASE}/campaigns`;
+                    method = 'POST';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                const respostaDiv = document.getElementById('resposta');
+                if (response.ok) {
+                    respostaDiv.className = 'response success';
+                    respostaDiv.innerHTML = `<strong>✅ Sucesso!</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    respostaDiv.className = 'response error';
+                    respostaDiv.innerHTML = `<strong>❌ Erro (${response.status})!</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                const respostaDiv = document.getElementById('resposta');
+                respostaDiv.className = 'response error';
+                respostaDiv.innerHTML = `<strong>❌ Erro de conexão!</strong><br>${error.message}<br><br>💡 Acede a: http://localhost:3000/test-upload.html`;
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Verificar servidor ao carregar a página
+        window.addEventListener('load', () => {
+            verificarServidor();
+            setInterval(verificarServidor, 30000);
+        });
+    </script>
+</body>
+</html>

@@ -1,58 +1,47 @@
+// app.js
 const express = require("express");
-const cors = require("cors");
+const app = express();
 const path = require("path");
 
-const app = express();
-
-
-// Middlewares
-app.use(cors());
-app.use(express.json());
-
-
-// Pasta pública para uploads
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-app.use("/uploads2", express.static(path.join(__dirname, "../uploads2")));
-app.use("/uploadsCampanhas", express.static(path.join(__dirname, "../uploadsCampanhas")));
-
-
-// Rotas
-const responsavelRoutes = require("./routes/responsavelRoutes");
-const criancasRoutes = require("./routes/criancasRoutes");
+// Importar rotas
 const authRoutes = require("./routes/authRoutes");
+const parentRoutes = require("./routes/parentRoutes");
+const childRoutes = require("./routes/childRoutes");
 const tarefasRoutes = require("./routes/tarefasRoutes");
-const campanhaRoutes = require("./routes/campanhaRoutes");
-const doacaoRoutes = require("./routes/doacaoRoutes");
-const quizRoutes = require("./routes/quizRoutes");
 const missoesRoutes = require("./routes/missoesRoutes");
+const campanhaRoutes = require("./routes/campanhaRoutes");
 const financeiroRoutes = require("./routes/accaofinanceiraRoutes");
-const videoRoutes = require("./routes/videoRoutes");
-const lojaRoutes = require("./routes/lojaRoutes");
+const shopRoutes = require("./routes/shopRoutes");
+const educationalRoutes = require("./routes/educationalRoutes");
+const relatoriosRoutes = require("./routes/relatoriosRoutes");
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Rotas da API
-app.use("/responsavel", responsavelRoutes);
-app.use("/criancas", criancasRoutes);
-app.use("/auth", authRoutes);
-app.use("/tarefas", tarefasRoutes);
-app.use("/campanhas", campanhaRoutes);
-app.use("/doacoes", doacaoRoutes);
-app.use("/missoes", missoesRoutes);
-app.use("/quiz", quizRoutes);
-app.use("/financeiro", financeiroRoutes);
-app.use("/video", videoRoutes);
-app.use("/loja", lojaRoutes);
-
-
-// Middleware de erro (SEMPRE no final)
-app.use((err, req, res, next) => {
-
-  console.error(err.stack);
-
-  res.status(err.status || 500).json({
-    erro: err.message || "Erro interno do servidor"
-  });
-
+// Rota de health check
+app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date() });
 });
+
+app.use(express.static(path.join(__dirname, "public")));
+
+// Arquivos estáticos
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads2", express.static(path.join(__dirname, "uploads2")));
+app.use("/uploadCampanhas", express.static(path.join(__dirname, "uploadCampanhas")));
+
+// Rotas - todas prefixadas com /api
+app.use("/api/auth", authRoutes);
+app.use("/api/parent", parentRoutes);
+app.use("/api/child", childRoutes);
+app.use("/api/tasks", tarefasRoutes);
+app.use("/api/missions", missoesRoutes);
+app.use("/api/campaigns", campanhaRoutes);
+app.use("/api/financeiro", financeiroRoutes);
+app.use("/api/shop", shopRoutes);
+app.use("/api/educational-content", educationalRoutes);
+app.use("/api/reports", relatoriosRoutes);
+
+
 
 module.exports = app;

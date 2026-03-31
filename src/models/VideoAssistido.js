@@ -1,8 +1,6 @@
-// models/VideoAssistido.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
-// Modelo de Conteúdo (vídeo educativo)
 const Conteudo = sequelize.define("conteudo", {
     id_conteudo: {
         type: DataTypes.INTEGER,
@@ -13,17 +11,37 @@ const Conteudo = sequelize.define("conteudo", {
         type: DataTypes.STRING,
         allowNull: false
     },
+    descricao: {
+        type: DataTypes.TEXT,
+        allowNull: false
+    },
     tipo: {
         type: DataTypes.ENUM('video', 'artigo', 'infografico'),
         defaultValue: 'video'
+    },
+    faixa_etaria: {
+        type: DataTypes.ENUM('6-8', '9-10', '11-12'),
+        defaultValue: '9-10'
+    },
+    thumbnail_url: {
+        type: DataTypes.STRING,
+        allowNull: true
     },
     url: {
         type: DataTypes.STRING,
         allowNull: false
     },
+    duracao: {
+        type: DataTypes.STRING,
+        defaultValue: "5:00"
+    },
+    topico: {
+        type: DataTypes.STRING,
+        defaultValue: "educacao_financeira"
+    },
     xp_recompensa: {
         type: DataTypes.INTEGER,
-        defaultValue: 5
+        defaultValue: 10
     },
     id_missao: {
         type: DataTypes.INTEGER,
@@ -35,10 +53,9 @@ const Conteudo = sequelize.define("conteudo", {
     }
 }, {
     tableName: "conteudo",
-    timestamps: false
+    timestamps: true
 });
 
-// Modelo para registrar o que a criança assistiu
 const ConteudoAssistido = sequelize.define("conteudo_assistido", {
     id: {
         type: DataTypes.INTEGER,
@@ -66,7 +83,7 @@ const ConteudoAssistido = sequelize.define("conteudo_assistido", {
     timestamps: true
 });
 
-// ⚠️ IMPORTANTE: Definir as associations AQUI mesmo
+//Definir as associations AQUI mesmo
 Conteudo.hasMany(ConteudoAssistido, { foreignKey: "id_conteudo" });
 ConteudoAssistido.belongsTo(Conteudo, { foreignKey: "id_conteudo" });
 

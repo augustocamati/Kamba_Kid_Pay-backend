@@ -1,0 +1,29 @@
+Depois de reorganizar/apagar pastas no teu projeto local:
+
+#### 1. Verifica o estado
+
+```bash
+git status
+```
+
+Vais ver arquivos apagados (deleted) e novos arquivos.
+
+#### 2. Adiciona todas as mudanças
+
+```bash
+git add .
+```
+
+> Isso inclui arquivos removidos também.
+
+#### 3. Faz o commit
+
+```bash
+git commit -m "Refatoração do projeto: removidas pastas antigas e nova estrutura"
+```
+
+#### 4. Envia para o repositório remoto
+
+```bash
+git push
+```

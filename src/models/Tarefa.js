@@ -1,4 +1,3 @@
-// models/Tarefa.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
@@ -31,6 +30,30 @@ const Tarefa = sequelize.define("tarefas", {
     foto_comprovacao: {
         type: DataTypes.STRING
     },
+    categoria: {
+        type: DataTypes.ENUM('save', 'spend', 'help'),
+        defaultValue: 'save'
+    },
+    icone: {
+        type: DataTypes.STRING,
+        defaultValue: "clipboard"
+    },
+    motivo_rejeicao: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    concluido_em: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    aprovado_em: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    rejeitado_em: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
     id_crianca: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -56,8 +79,8 @@ const Tarefa = sequelize.define("tarefas", {
         }
     }
 }, {
-    tableName: "tarefas",    
-    timestamps: true         
+    tableName: "tarefas",
+    timestamps: true
 });
 
 module.exports = Tarefa;

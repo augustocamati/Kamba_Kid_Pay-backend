@@ -1,11 +1,14 @@
-const express = require("express")
-const router = express.Router()
-const { uploadCampanhas } = require("../middlewares/upload");
-const campanhaController = require("../controllers/campanhaController")
+// routes/campanhaRoutes.js
+const express = require("express");
+const router = express.Router();
+const campanhaController = require("../controllers/campanhaController");
+const { authMiddleware } = require("../middlewares/auth");
+const {upload} = require("../middlewares/upload");
 
+// Listar campanhas é público (ou pode ser protegido)
+router.get("/", campanhaController.listCampaigns);
 
-router.post("/criar", uploadCampanhas.single("foto"),campanhaController.criarCampanha)
+// Criar campanha requer autenticação (responsável)
+router.post("/", authMiddleware, upload.single("foto"), campanhaController.createCampaign);
 
-router.get("/ativas", campanhaController.listarCampanhasAtivas)
-
-module.exports = router
+module.exports = router;

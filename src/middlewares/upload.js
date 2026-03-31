@@ -1,9 +1,7 @@
-// middlewares/upload.js
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// Garantir que as pastas existem
 const pastas = ["uploads", "uploads2", "uploadCampanhas"];
 pastas.forEach(pasta => {
     if (!fs.existsSync(pasta)) {
@@ -34,19 +32,19 @@ const fileFilter = (req, file, cb) => {
 };
 
 // Criar middlewares para cada pasta
-const upload = multer({ 
+const upload = multer({
     storage: storage("uploads"),
     fileFilter,
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 });
 
-const upload2 = multer({ 
+const upload2 = multer({
     storage: storage("uploads2"),
     fileFilter,
     limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-const uploadCampanhas = multer({ 
+const uploadCampanhas = multer({
     storage: storage("uploadCampanhas"),
     fileFilter,
     limits: { fileSize: 5 * 1024 * 1024 }
@@ -57,3 +55,4 @@ module.exports = {
     upload2,         // para missões (foto tarefa)
     uploadCampanhas  // para campanhas
 };
+

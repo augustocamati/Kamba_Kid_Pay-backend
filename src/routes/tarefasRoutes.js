@@ -1,18 +1,15 @@
-const express = require("express")
-const router = express.Router()
-const { upload } = require("../middlewares/upload");
-const tarefaController = require("../controllers/tarefasController")
+// routes/tarefasRoutes.js
+const express = require("express");
+const router = express.Router();
+const tarefasController = require("../controllers/tarefasController");
+const { authMiddleware, requireParent } = require("../middlewares/auth");
+const {upload} = require("../middlewares/upload");
 
+router.use(authMiddleware, requireParent);
 
-router.post("/criar", tarefaController.criarTarefa)
+router.post("/", tarefasController.createTask);
+router.get("/", tarefasController.listTasks);
+router.patch("/:taskId/approve", tarefasController.approveTask);
+router.patch("/:taskId/reject", tarefasController.rejectTask);
 
-// enviar foto da tarefa
-router.post( "/comprovacao", upload.single("foto"), tarefaController.enviarComprovacao)
-
-router.patch("/aprovar/:id_tarefa", tarefaController.aprovarTarefa)
-
-router.patch("/rejeitar/:id_tarefa", tarefaController.rejeitarTarefa)
-
-router.get("/crianca/:id_crianca", tarefaController.listarTarefasCrianca)
-
-module.exports = router
+module.exports = router;

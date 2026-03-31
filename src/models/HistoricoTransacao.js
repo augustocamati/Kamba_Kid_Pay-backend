@@ -21,8 +21,8 @@ const Historico = sequelize.define("historico_transacoes", {
             "poupar",
             "doar",
             "bonus_gestao",
-            "missao_conteudo",   // ADICIONAR
-            "missao_quiz"         // ADICIONAR
+            "missao_conteudo",   
+            "missao_quiz"       
         )
     },
 

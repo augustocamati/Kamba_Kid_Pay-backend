@@ -1,4 +1,3 @@
-// models/ProgressoMissao.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
@@ -46,8 +45,8 @@ const ProgressoMissao = sequelize.define("progresso_missao", {
         allowNull: true
     }
 }, {
-    tableName: "progresso_missao",  // ← AQUI
-    timestamps: true                 // ← AQUI
+    tableName: "progresso_missao",  
+    timestamps: true             
 });
 
 module.exports = ProgressoMissao;

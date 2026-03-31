@@ -1,201 +1,179 @@
 // controllers/missoesController.js
 const { Op } = require("sequelize");
+const sequelize = require("../config/database");
 const Missao = require("../models/Missoes");
 const ProgressoMissao = require("../models/ProgressoMissao");
 const Crianca = require("../models/Criancas");
+const Historico = require("../models/HistoricoTransacao");
 
-/**
- * RESPONSÁVEL: Pode criar missões personalizadas
- */
-exports.criarMissao = async (req, res) => {
+// POST /api/missions
+exports.createMission = async (req, res) => {
     try {
-        const {
-            titulo,
-            descricao,
-            tipo_missao,
-            xp_recompensa,
-            recompensa_financeira,
-            nivel_minimo,
-            id_responsavel
+        const { 
+            titulo, 
+            descricao, 
+            tipo,           // ← O frontend envia como "tipo"
+            objetivo_valor, 
+            recompensa, 
+            icone, 
+            crianca_id 
         } = req.body;
 
-        // Validações básicas
-        if (!titulo || !descricao || !tipo_missao) {
-            return res.status(400).json({
-                erro: "Título, descrição e tipo da missão são obrigatórios"
+        console.log("📝 Criando missão:", { titulo, tipo, objetivo_valor, crianca_id });
+
+        if (!titulo || !descricao || !tipo || !objetivo_valor || !crianca_id) {
+            return res.status(400).json({ 
+                erro: "CAMPOS_OBRIGATORIOS", 
+                mensagem: "Preencha todos os campos obrigatórios." 
             });
         }
 
-        // Se for tarefa, precisa ter recompensa financeira
-        if (tipo_missao === 'tarefa_casa' && (!recompensa_financeira || recompensa_financeira <= 0)) {
-            return res.status(400).json({
-                erro: "Tarefas devem ter uma recompensa financeira"
+        const crianca = await Crianca.findByPk(crianca_id);
+        if (!crianca || crianca.id_responsavel !== req.usuario.id) {
+            return res.status(404).json({ 
+                erro: "CRIANCA_NAO_ENCONTRADA", 
+                mensagem: "Dependente não encontrado." 
             });
         }
 
-        const novaMissao = await Missao.create({
+        // 🔥 Mapear "tipo" para "tipo_missao"
+        let tipo_missao;
+        switch (tipo) {
+            case 'poupanca':
+                tipo_missao = 'acao_financeira';
+                break;
+            case 'consumo':
+                tipo_missao = 'acao_financeira';
+                break;
+            case 'solidariedade':
+                tipo_missao = 'acao_financeira';
+                break;
+            default:
+                tipo_missao = 'acao_financeira';
+        }
+
+        const missao = await Missao.create({
             titulo,
             descricao,
-            tipo_missao,
-            xp_recompensa: xp_recompensa || 0,
-            recompensa_financeira: recompensa_financeira || 0,
-            nivel_minimo: nivel_minimo || 1,
-            id_responsavel: id_responsavel || null,
-            ativa: true
+            tipo_missao,                    // ← Usar tipo_missao, não tipo
+            xp_recompensa: recompensa || 0,
+            recompensa_financeira: 0,
+            objetivo_valor: parseFloat(objetivo_valor),
+            progresso_atual: 0,
+            icone: icone || "🎯",
+            id_crianca: crianca_id,
+            id_responsavel: req.usuario.id,
+            ativa: true,
+            concluida: false,
+            nivel_minimo: 1
         });
 
         res.status(201).json({
-            mensagem: "Missão criada com sucesso",
-            missao: novaMissao
+            id: missao.id_missao,
+            titulo: missao.titulo,
+            descricao: missao.descricao,
+            tipo: tipo,  // ← Retorna o tipo original para o frontend
+            objetivo_valor: parseFloat(missao.objetivo_valor),
+            progresso_atual: parseFloat(missao.progresso_atual),
+            recompensa: parseFloat(missao.xp_recompensa),
+            icone: missao.icone,
+            ativa: missao.ativa,
+            crianca_id: missao.id_crianca,
+            criado_em: missao.createdAt
         });
 
     } catch (error) {
-        res.status(500).json({ erro: error.message });
+        console.error("❌ Erro ao criar missão:", error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
 
-/**
- * CRIANÇA: Ver missões disponíveis
- */
-exports.missoesDisponiveis = async (req, res) => {
+// GET /api/missions
+exports.listMissions = async (req, res) => {
     try {
-        const { id_crianca } = req.params;
+        const { crianca_id, ativa } = req.query;
+        const responsavelId = req.usuario.id;
 
-        const crianca = await Crianca.findByPk(id_crianca);
-        if (!crianca) {
-            return res.status(404).json({ erro: "Criança não encontrada" });
-        }
-
-        // Buscar missões ativas com nível compatível
-        const missoes = await Missao.findAll({
-            where: {
-                ativa: true,
-                nivel_minimo: { [Op.lte]: crianca.nivel },
-                // Mostra missões do sistema (id_responsavel null) e do responsável dela
-                [Op.or]: [
-                    { id_responsavel: null },
-                    { id_responsavel: crianca.id_responsavel }
-                ]
+        const where = {};
+        if (crianca_id) {
+            const crianca = await Crianca.findByPk(crianca_id);
+            if (!crianca || crianca.id_responsavel !== responsavelId) {
+                return res.status(403).json({ 
+                    erro: "SEM_PERMISSAO", 
+                    mensagem: "Você não tem acesso a este dependente." 
+                });
             }
-        });
+            where.id_crianca = crianca_id;
+        }
+        if (ativa !== undefined) where.ativa = ativa === 'true';
 
-        // Buscar progresso da criança
-        const progresso = await ProgressoMissao.findAll({
-            where: { id_crianca }
-        });
-
-        // Separar por estado
-        const missoesConcluidas = progresso
-            .filter(p => p.estado === 'concluida')
-            .map(p => p.id_missao);
-
-        const missoesEmAndamento = progresso
-            .filter(p => p.estado === 'em_progresso' || p.estado === 'aguardando_aprovacao')
-            .map(p => p.id_missao);
-
-        const disponiveis = missoes.filter(m => 
-            !missoesConcluidas.includes(m.id_missao) && 
-            !missoesEmAndamento.includes(m.id_missao)
-        );
-
-        // Buscar detalhes das missões em andamento
-        const andamentoDetalhado = await Promise.all(
-            progresso
-                .filter(p => missoesEmAndamento.includes(p.id_missao))
-                .map(async (p) => {
-                    const missao = await Missao.findByPk(p.id_missao);
-                    return {
-                        ...p.toJSON(),
-                        missao: missao ? missao.toJSON() : null
-                    };
-                })
-        );
+        const missoes = await Missao.findAll({ where });
 
         res.json({
-            disponiveis,
-            em_andamento: andamentoDetalhado,
-            concluidas: missoesConcluidas.length
+            missoes: missoes.map(m => ({
+                id: m.id_missao,
+                titulo: m.titulo,
+                descricao: m.descricao,
+                tipo: m.tipo,
+                objetivo_valor: parseFloat(m.objetivo_valor),
+                progresso_atual: parseFloat(m.progresso_atual),
+                recompensa: parseFloat(m.xp_recompensa),
+                icone: m.icone,
+                cor: m.tipo === 'poupanca' ? ["#BF5AF2", "#A335EE"] : (m.tipo === 'consumo' ? ["#0984E3", "#0652DD"] : ["#FFD130", "#FBC02D"]),
+                tipo_label: m.tipo === 'poupanca' ? "Poupança" : (m.tipo === 'consumo' ? "Consumo" : "Solidariedade"),
+                icone_nome: m.tipo === 'poupanca' ? "trending-up" : (m.tipo === 'consumo' ? "cart" : "heart"),
+                ativa: m.ativa,
+                crianca_id: m.id_crianca
+            }))
         });
 
     } catch (error) {
-        res.status(500).json({ erro: error.message });
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
 
-/**
- * CRIANÇA: Iniciar uma missão
- */
-exports.iniciarMissao = async (req, res) => {
+// PATCH /api/missions/:missionId/progress
+exports.updateProgress = async (req, res) => {
     try {
-        const { id_crianca, id_missao } = req.body;
+        const { missionId } = req.params;
+        const { novo_progresso } = req.body;
 
-        // Validações
-        const crianca = await Crianca.findByPk(id_crianca);
-        if (!crianca) {
-            return res.status(404).json({ erro: "Criança não encontrada" });
-        }
-
-        const missao = await Missao.findByPk(id_missao);
+        const missao = await Missao.findByPk(missionId);
         if (!missao) {
-            return res.status(404).json({ erro: "Missão não encontrada" });
-        }
-
-        // Verificar nível
-        if (crianca.nivel < missao.nivel_minimo) {
-            return res.status(400).json({ 
-                erro: `Nível mínimo necessário: ${missao.nivel_minimo}` 
+            return res.status(404).json({ 
+                erro: "MISSAO_NAO_ENCONTRADA", 
+                mensagem: "Missão não encontrada." 
             });
         }
 
-        // Verificar se já iniciou
-        const progressoExistente = await ProgressoMissao.findOne({
-            where: { id_crianca, id_missao }
+        const progresso = parseFloat(novo_progresso);
+        const objetivo = parseFloat(missao.objetivo_valor);
+        const concluida = progresso >= objetivo;
+
+        await missao.update({
+            progresso_atual: progresso,
+            concluida
         });
 
-        if (progressoExistente) {
-            return res.status(400).json({ erro: "Missão já iniciada" });
+        if (concluida) {
+            // Dar XP da missão
+            const crianca = await Crianca.findByPk(missao.id_crianca);
+            const novoXP = crianca.xp + parseFloat(missao.xp_recompensa);
+            const novoNivel = Math.floor(novoXP / 100) + 1;
+            await crianca.update({ xp: novoXP, nivel: novoNivel });
         }
 
-        // Criar progresso
-        const progresso = await ProgressoMissao.create({
-            id_crianca,
-            id_missao,
-            estado: 'em_progresso',
-            data_inicio: new Date()
-        });
-
         res.json({
-            mensagem: "Missão iniciada com sucesso!",
-            progresso
+            id: missao.id_missao,
+            progresso_atual: parseFloat(missao.progresso_atual),
+            objetivo_valor: parseFloat(missao.objetivo_valor),
+            percentagem: Math.round((progresso / objetivo) * 100),
+            concluida
         });
 
     } catch (error) {
-        res.status(500).json({ erro: error.message });
-    }
-};
-
-exports.missoesTarefa = async (req, res) => {
-    try {
-        const { id_responsavel } = req.params;
-
-        const missoes = await Missao.findAll({
-            where: {
-                tipo_missao: 'tarefa_casa',
-                ativa: true,
-                [Op.or]: [
-                    { id_responsavel: null },      // Missões do sistema
-                    { id_responsavel: id_responsavel } // Missões criadas por este responsável
-                ]
-            },
-            attributes: ['id_missao', 'titulo', 'descricao', 'xp_recompensa', 'recompensa_financeira']
-        });
-
-        res.json({
-            total: missoes.length,
-            missoes
-        });
-
-    } catch (error) {
-        res.status(500).json({ erro: error.message });
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };

@@ -1,7 +1,7 @@
 const { Sequelize } = require("sequelize");
 
 const sequelize = new Sequelize(
-  "kamba_kid_pay2",
+  "kamba_kid_pay3",
   "root",
   "",
   {
