@@ -32,12 +32,12 @@ exports.criarConteudo = async (req, res) => {
     try {
         const {
             titulo, descricao, tipo, faixa_etaria,
-            thumbnail_url, url, duracao, topico, xp_recompensa
+            thumbnail_url, url, duracao, topico, xp_recompensa, id_missao
         } = req.body;
 
         const novoConteudo = await Conteudo.create({
             titulo, descricao, tipo, faixa_etaria,
-            thumbnail_url, url, duracao, topico, xp_recompensa
+            thumbnail_url, url, duracao, topico, xp_recompensa, id_missao
         });
 
         await LogAdmin.create({
@@ -45,7 +45,7 @@ exports.criarConteudo = async (req, res) => {
             acao: "CRIAR",
             entidade: "conteudo",
             id_entidade: novoConteudo.id_conteudo,
-            detalhes: JSON.stringify({ titulo })
+            detalhes: JSON.stringify({ titulo, id_missao })
         });
 
         res.status(201).json(novoConteudo);
@@ -118,7 +118,7 @@ exports.listarConteudosComViews = async (req, res) => {
         if (tipo) where.tipo = tipo;
         if (faixa_etaria) where.faixa_etaria = faixa_etaria;
 
-        const conteudos = await ConteudoAssistido.findAll({
+        const conteudos = await Conteudo.findAll({
             where,
             include: [{
                 model: ConteudoAssistido,
@@ -136,7 +136,8 @@ exports.listarConteudosComViews = async (req, res) => {
             duracao: c.duracao,
             categoria: c.tipo,
             faixa_etaria: c.faixa_etaria,
-            visualizacoes: c.ConteudoAssistidos?.length || 0,
+            id_missao: c.id_missao,
+            visualizacoes: c.conteudo_assistidos?.length || 0,
             status: c.status !== false ? "Ativo" : "Inativo"
         }));
 

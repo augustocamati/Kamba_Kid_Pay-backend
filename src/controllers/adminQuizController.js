@@ -26,6 +26,7 @@ exports.listarQuizzes = async (req, res) => {
         const respostas = await RespostaUsuario.findAll({
             include: [{
                 model: Quiz,
+                as: 'Quiz',
                 attributes: ['id_missao']
             }]
         });
@@ -135,7 +136,7 @@ exports.criarQuiz = async (req, res) => {
         });
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) await transaction.rollback();
         console.error("Erro criar quiz:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
@@ -151,7 +152,7 @@ exports.deletarQuiz = async (req, res) => {
 
         const missao = await Missao.findByPk(id, { transaction });
         if (!missao) {
-            await transaction.rollback();
+            if (transaction) await transaction.rollback();
             return res.status(404).json({ erro: "QUIZ_NAO_ENCONTRADO" });
         }
 
@@ -175,21 +176,11 @@ exports.deletarQuiz = async (req, res) => {
         res.json({ mensagem: "Quiz deletado com sucesso!" });
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) await transaction.rollback();
         console.error("Erro deletar quiz:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
-
-// Função auxiliar
-function mapearCategoriaFrontend(tipo) {
-    const mapa = {
-        'poupanca': 'Poupar',
-        'consumo': 'Gastar',
-        'solidariedade': 'Doar'
-    };
-    return mapa[tipo] || 'Poupar';
-}
 
 // ============================================
 // PUT /api/admin/quizzes/:id
@@ -206,7 +197,7 @@ exports.atualizarQuiz = async (req, res) => {
 
         const missao = await Missao.findByPk(id, { transaction });
         if (!missao || missao.tipo_missao !== 'quiz') {
-            await transaction.rollback();
+            if (transaction) await transaction.rollback();
             return res.status(404).json({ erro: "QUIZ_NAO_ENCONTRADO" });
         }
 
@@ -248,9 +239,19 @@ exports.atualizarQuiz = async (req, res) => {
         res.json({ mensagem: "Quiz atualizado com sucesso!" });
 
     } catch (error) {
-        await transaction.rollback();
-        console.error(error);
+        if (transaction) await transaction.rollback();
+        console.error("Erro atualizar quiz:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
 
+function mapearCategoriaFrontend(tipo) {
+    const mapa = {
+        'poupanca': 'Poupar',
+        'consumo': 'Gastar',
+        'solidariedade': 'Ajudar',
+        'investimento': 'Investir',
+        'planejamento': 'Planejamento'
+    };
+    return mapa[tipo] || 'Poupar';
+}

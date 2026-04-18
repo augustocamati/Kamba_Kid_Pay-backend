@@ -62,7 +62,7 @@ const Missao = sequelize.define("missao", {
     },
     id_crianca: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
             model: 'crianca',
             key: 'id_crianca'
