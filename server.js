@@ -4,7 +4,7 @@ const sequelize = require("./src/config/database");
 
 require("./src/models/Associations"); 
 
-sequelize.sync({ alter: true })
+sequelize.sync()
     .then(() => {
         console.log("Banco sincronizado");
         app.listen(process.env.PORT || 3000, () => {
