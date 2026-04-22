@@ -40,7 +40,7 @@ exports.dashboard = async (req, res) => {
         });
 
         // Missão em destaque
-        const missaoDestaque = await Missao.findOne({
+        const missaoDestaque = await Missao.findAll({
             where: {
                 id_crianca: criancaId,
                 ativa: true,
@@ -48,7 +48,7 @@ exports.dashboard = async (req, res) => {
             },
             order: [['progresso_atual', 'DESC']]
         });
-
+console.log("missaoDestaque", missaoDestaque);
         // 🔥 CORREÇÃO: Itens comprados para o avatar
         const itensComprados = await CriancaShopItem.findAll({
             where: { id_crianca: criancaId },
@@ -119,14 +119,15 @@ exports.dashboard = async (req, res) => {
                 icone: t.icone || "clipboard",
                 categoria: t.categoria || "save"
             })),
-            missao_destaque: missaoDestaque ? {
-                id: missaoDestaque.id_missao,
-                titulo: missaoDestaque.titulo,
-                icone: missaoDestaque.icone || "🎯",
-                objetivo_valor: parseFloat(missaoDestaque.objetivo_valor),
-                progresso_atual: parseFloat(missaoDestaque.progresso_atual),
-                faltam: parseFloat(missaoDestaque.objetivo_valor) - parseFloat(missaoDestaque.progresso_atual)
-            } : null
+            missao_destaque: missaoDestaque.map(m => ({
+                id: m.id_missao,
+                titulo: m.titulo,
+                icone: m.icone || "🎯",
+                tipo: m.tipo,
+                objetivo_valor: parseFloat(m.objetivo_valor),
+                progresso_atual: parseFloat(m.progresso_atual),
+                faltam: parseFloat(m.objetivo_valor) - parseFloat(m.progresso_atual)
+            }))
         });
 
     } catch (error) {
@@ -270,7 +271,7 @@ exports.listMissions = async (req, res) => {
             where,
             order: [['createdAt', 'DESC']]
         });
-
+console.log("missoes", missoes);
         const missoesFormatadas = missoes.map(m => {
             const progresso = parseFloat(m.progresso_atual);
             const objetivo = parseFloat(m.objetivo_valor);
