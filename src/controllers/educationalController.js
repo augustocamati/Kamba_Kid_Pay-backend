@@ -72,7 +72,7 @@ exports.getQuizDetails = async (req, res) => {
             where: { id_missao: missaoId },
             include: [{
                 model: QuizOpcao,
-                as: 'QuizOpcaos',
+                as: 'opcoes',
                 attributes: ['id_opcao', 'texto', 'id_quiz']
             }]
         });
@@ -85,7 +85,7 @@ exports.getQuizDetails = async (req, res) => {
             id: quiz.id_quiz,
             id_missao: quiz.id_missao,
             pergunta: quiz.pergunta,
-            opcoes: quiz.QuizOpcaos
+            opcoes: quiz.opcoes
         });
     } catch (error) {
         console.error(error);
@@ -164,6 +164,7 @@ exports.completeContent = async (req, res) => {
         const criancaId = req.usuario.id;
 
         const conteudo = await Conteudo.findByPk(contentId, { transaction });
+      
         if (!conteudo) {
             await transaction.rollback();
             return res.status(404).json({ erro: "CONTEUDO_NAO_ENCONTRADO" });
@@ -176,18 +177,21 @@ exports.completeContent = async (req, res) => {
             where: { id_crianca: criancaId, id_conteudo: contentId },
             transaction
         });
-
         if (!created) {
+       
+
             await transaction.rollback();
-            return res.status(400).json({ erro: "JA_COMPLETO", mensagem: "Já completaste este conteúdo." });
+            return res.json({ mensagem: "Conteúdo concluído!", xp_ganho: 0 });
+            // return res.status(400).json({ erro: "JA_COMPLETO", mensagem: "Já completaste este conteúdo." });
         }
 
         // Dar XP por assistir
+        const xp_por_assistir = conteudo.xp_recompensa || 10;
         const xpGanho = conteudo.xp_recompensa || 10;
-        const novoXP = crianca.xp + xpGanho;
+        const novoXP = crianca.xp + xpGanho + xp_por_assistir;
         const novoNivel = Math.floor(novoXP / 100) + 1;
-        
-        await crianca.update({ xp: novoXP, nivel: novoNivel }, { transaction });
+         console.log("chegou aqui", novoXP);
+       const crianca2 = await crianca.update({ xp: novoXP, nivel: novoNivel }, { transaction });
 
         await transaction.commit();
         res.json({ mensagem: "Conteúdo concluído!", xp_ganho: xpGanho });
