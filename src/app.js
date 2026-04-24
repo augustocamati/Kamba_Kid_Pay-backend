@@ -14,6 +14,7 @@ const campanhaRoutes = require("./routes/campanhaRoutes");
 const financeiroRoutes = require("./routes/accaofinanceiraRoutes");
 const shopRoutes = require("./routes/shopRoutes");
 const educationalRoutes = require("./routes/educationalRoutes");
+const mascoteRoutes = require("./routes/mascoteRoutes");
 const relatoriosRoutes = require("./routes/relatoriosRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
@@ -42,6 +43,7 @@ app.use("/api/campaigns", campanhaRoutes);
 app.use("/api/financeiro", financeiroRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/educational-content", educationalRoutes);
+app.use("/api/mascotes", mascoteRoutes);
 app.use("/api/reports", relatoriosRoutes);
 app.use("/api/admin", adminRoutes);
 
