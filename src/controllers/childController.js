@@ -218,7 +218,7 @@ exports.submitTask = async (req, res) => {
         console.log("tarefa", req.file);
         if (req.file) {
               console.log("tarefa", req.file);
-            fotoUrl = `/uploads/${req.file.filename}`;
+            fotoUrl = req.file.filename;
         } else if (req.body.foto_base64) {
             // Processar base64 se necessário
             fotoUrl = req.body.foto_base64; // Simplificado
@@ -242,7 +242,7 @@ console.log("tarefa enviada para aprovação", criancaId);
             tarefa: {
                 id: tarefa.id_tarefa,
                 status: tarefa.status,
-                foto_url: fotoUrl,
+                foto_url: fotoUrl ? `/uploads/${fotoUrl}` : null,
                 concluido_em: tarefa.concluido_em
             }
         });

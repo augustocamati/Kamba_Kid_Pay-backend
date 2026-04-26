@@ -29,9 +29,9 @@ app.get("/api/health", (req, res) => {
 app.use(express.static(path.join(__dirname, "public")));
 
 // Arquivos estáticos
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/uploads2", express.static(path.join(__dirname, "uploads2")));
-app.use("/uploadCampanhas", express.static(path.join(__dirname, "uploadCampanhas")));
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use("/uploads2", express.static(path.join(__dirname, "..", "uploads2")));
+app.use("/uploadCampanhas", express.static(path.join(__dirname, "..", "uploadCampanhas")));
 
 // Rotas - todas prefixadas com /api
 app.use("/api/auth", authRoutes);
