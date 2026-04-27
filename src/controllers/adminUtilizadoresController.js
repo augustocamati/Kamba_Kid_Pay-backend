@@ -284,9 +284,20 @@ exports.deletarResponsavel = async (req, res) => {
         const criancas = await Criancas.findAll({ where: { id_responsavel: id }, transaction });
         const idsCriancas = criancas.map(c => c.id_crianca);
 
+        // 2. Deletar Tarefas associadas ao responsável (ou aos seus dependentes)
+        // Deletamos primeiro as tarefas pois elas podem referenciar missões ou crianças
+        await Tarefa.destroy({ 
+            where: { 
+                [Op.or]: [
+                    { id_responsavel: id },
+                    { id_crianca: idsCriancas }
+                ]
+            }, 
+            transaction 
+        });
+
         if (idsCriancas.length > 0) {
-            // Deletar registros relacionados às crianças
-            await Tarefa.destroy({ where: { id_crianca: idsCriancas }, transaction });
+            // 3. Deletar registros relacionados às crianças
             await Historico.destroy({ where: { id_crianca: idsCriancas }, transaction });
             await Doacoes.destroy({ where: { id_crianca: idsCriancas }, transaction });
             await ProgressoMissao.destroy({ where: { id_crianca: idsCriancas }, transaction });
@@ -294,14 +305,17 @@ exports.deletarResponsavel = async (req, res) => {
             await CriancaShopItem.destroy({ where: { id_crianca: idsCriancas }, transaction });
             await RespostaUsuario.destroy({ where: { id_crianca: idsCriancas }, transaction });
             
-            // Deletar as crianças
+            // 4. Deletar missões atribuídas especificamente às crianças
+            await Missao.destroy({ where: { id_crianca: idsCriancas }, transaction });
+
+            // 5. Deletar as crianças
             await Criancas.destroy({ where: { id_responsavel: id }, transaction });
         }
         
-        // 2. Deletar missões do responsável
+        // 6. Deletar missões criadas pelo responsável
         await Missao.destroy({ where: { id_responsavel: id }, transaction });
 
-        // 3. Deletar responsável
+        // 7. Deletar responsável
         await responsavel.destroy({ transaction });
 
         await LogAdmin.create({
@@ -484,6 +498,7 @@ exports.deletarCrianca = async (req, res) => {
             await ConteudoAssistido.destroy({ where: { id_crianca: id }, transaction });
             await CriancaShopItem.destroy({ where: { id_crianca: id }, transaction });
             await RespostaUsuario.destroy({ where: { id_crianca: id }, transaction });
+            await Missao.destroy({ where: { id_crianca: id }, transaction });
 
             await crianca.destroy({ transaction });
 
