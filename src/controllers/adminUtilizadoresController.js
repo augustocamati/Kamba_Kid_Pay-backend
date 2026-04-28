@@ -139,7 +139,7 @@ exports.listarDependentes = async (req, res) => {
 // ============================================
 exports.listarCriancas = async (req, res) => {
     try {
-        const { busca, provincia, municipio, idade_min, idade_max, pagina = 1, limite = 20 } = req.query;
+        const { busca, provincia, municipio, idade_min, idade_max, ordenar, pagina = 1, limite = 20 } = req.query;
         const where = {};
 
         if (busca) {
@@ -150,6 +150,11 @@ exports.listarCriancas = async (req, res) => {
         if (idade_min) where.idade = { [Op.gte]: parseInt(idade_min) };
         if (idade_max) where.idade = { ...where.idade, [Op.lte]: parseInt(idade_max) };
 
+        let order = [['id_crianca', 'DESC']];
+        if (ordenar === 'poupam') order = [['saldo_poupar', 'DESC']];
+        else if (ordenar === 'gastam') order = [['saldo_gastar', 'DESC']];
+        else if (ordenar === 'doam') order = [['saldo_ajudar', 'DESC']];
+
         const offset = (pagina - 1) * limite;
         
         const { count, rows: criancas } = await Criancas.findAndCountAll({
@@ -158,7 +163,7 @@ exports.listarCriancas = async (req, res) => {
                 model: Responsavel,
                 attributes: ['id_responsavel', 'nome_completo', 'email', 'telefone']
             }],
-            order: [['id_crianca', 'DESC']],
+            order,
             limit: parseInt(limite),
             offset
         });
